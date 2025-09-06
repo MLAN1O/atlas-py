@@ -1,110 +1,96 @@
-# 1. Importações
+# main.py
 import os
 from dotenv import load_dotenv
-from langchain_openai import ChatOpenAI
-from langchain.agents import create_sql_agent
+
+# Importar componentes necessários do LangChain
 from langchain_community.utilities import SQLDatabase
-from sqlalchemy import create_engine
+from langchain.agents import create_sql_agent
+from langchain_openai import ChatOpenAI
+from langchain.agents.agent_types import AgentType
 
-# 2. Carregar Variáveis de Ambiente
-load_dotenv() 
+# Carrega variáveis de ambiente do arquivo .env
+load_dotenv()
 
-# 3. Configurar a Conexão com o Banco de Dados
-db_user = os.getenv("DB_USER")
-db_pass = os.getenv("DB_PASS")
-db_host = os.getenv("DB_HOST")
-db_port = os.getenv("DB_PORT")
-db_name = os.getenv("DB_NAME")
+def main():
+    """
+    Função principal para inicializar e interagir com o Agente de IA.
+    """
+    print("Iniciando o Agente de IA para Análise de Dados...")
 
-db_uri = f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-engine = create_engine(db_uri)
+    # 1. Configuração do Banco de Dados PostgreSQL (Supabase)
+    # As variáveis de conexão do banco de dados devem ser carregadas de variáveis de ambiente
+    db_host = os.getenv("DB_HOST")
+    db_name = os.getenv("DB_NAME")
+    db_user = os.getenv("DB_USER")
+    db_pass = os.getenv("DB_PASS")
+    db_port = os.getenv("DB_PORT")
 
-# --- INÍCIO: DEFINIÇÃO DO SCHEMA CUSTOMIZADO E DETALHADO ---
+    # Verifica se todas as variáveis de ambiente necessárias estão definidas
+    if not all([db_host, db_name, db_user, db_pass, db_port]):
+        print("Erro: Uma ou mais variáveis de ambiente do banco de dados (DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT) não estão definidas.")
+        print("Por favor, configure suas credenciais do Supabase no arquivo .env.")
+        return
 
-# Dicionário com as definições precisas das tabelas para a IA.
-# Os comentários (--) são dicas valiosas que a IA usará para entender melhor o negócio.
-custom_table_info = {
-    "custos": f"""
-CREATE TABLE custos (
-    id BIGINT PRIMARY KEY, -- Identificador único do custo
-    descricao TEXT NOT NULL, -- Descrição do que foi o custo
-    valor DECIMAL(15, 2) NOT NULL, -- Valor monetário do custo
-    data_registro TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- Data em que o custo foi inserido no sistema
-    categoria TEXT, -- Categoria do custo (ex: 'ração', 'manutenção', 'salários')
-    observacoes TEXT, -- Observações adicionais
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- Data de criação do registro
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- Data da última atualização do registro
-);
-""",
-    "abates": f"""
-CREATE TABLE abates (
-    id BIGINT PRIMARY KEY, -- Identificador único do abate
-    data_abate TIMESTAMP WITH TIME ZONE NOT NULL, -- Data exata em que o abate ocorreu
-    quantidade INTEGER NOT NULL, -- Número de animais abatidos
-    peso_total DECIMAL(15, 2) NOT NULL, -- Peso total em kg dos animais abatidos
-    peso_medio DECIMAL(15, 2) GENERATED ALWAYS AS (peso_total / NULLIF(quantidade, 0)) STORED, -- Peso médio por animal (calculado automaticamente)
-    local_abate TEXT, -- Local onde o abate foi realizado
-    observacoes TEXT, -- Observações adicionais sobre o lote ou processo
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- Data de criação do registro
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- Data da última atualização do registro
-);
-""",
-    "vendas": f"""
-CREATE TABLE vendas (
-    id BIGINT PRIMARY KEY, -- Identificador único da venda
-    data_venda TIMESTAMP WITH TIME ZONE NOT NULL, -- Data exata em que a venda foi realizada
-    cliente TEXT, -- Nome ou identificador do cliente que comprou
-    quantidade INTEGER NOT NULL, -- Quantidade de itens/animais vendidos
-    peso_total DECIMAL(15, 2) NOT NULL, -- Peso total em kg do que foi vendido
-    valor_total DECIMAL(15, 2) NOT NULL, -- Valor monetário total da venda
-    valor_por_kg DECIMAL(15, 2) GENERATED ALWAYS AS (valor_total / NULLIF(peso_total, 0)) STORED, -- Preço por kg (calculado automaticamente)
-    forma_pagamento TEXT, -- Método de pagamento (ex: 'PIX', 'Boleto', 'Cartão')
-    observacoes TEXT, -- Observações adicionais sobre a venda
-    abate_id BIGINT REFERENCES abates(id), -- Chave estrangeira que conecta a venda ao abate correspondente
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- Data de criação do registro
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() -- Data da última atualização do registro
-);
-"""
-}
+    # Constrói a string de conexão do PostgreSQL
+    # Ex: postgresql+psycopg2://user:password@host:port/dbname
+    database_url = f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 
-# --- FIM DA DEFINIÇÃO DO SCHEMA ---
+    try:
+        # Inicializa a conexão com o banco de dados usando LangChain
+        # LangChain pode inferir o esquema, mas um "mapa detalhado e customizado" [3]
+        # pode ser fornecido através de ferramentas ou ajustes no prompt.
+        db = SQLDatabase.from_uri(database_url)
+        print("Conexão com o banco de dados PostgreSQL (Supabase) estabelecida.")
+    except Exception as e:
+        print(f"Erro ao conectar ao banco de dados: {e}")
+        print("Verifique suas variáveis de ambiente DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT e as credenciais.")
+        return
 
-# Passe o schema customizado para o objeto SQLDatabase
-db = SQLDatabase(
-    engine=engine,
-    custom_table_info=custom_table_info
-)
+    # 2. Configuração do Modelo de IA (GPT-4o-mini)
+    # A chave da API OpenAI deve ser carregada de variáveis de ambiente
+    # Ex: OPENAI_API_KEY="sua_chave_aqui"
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+        print("Erro: A variável de ambiente OPENAI_API_KEY não está definida.")
+        print("Por favor, configure sua chave da API OpenAI.")
+        return
 
-# 4. Inicializar o LLM
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0
-)
+    llm = ChatOpenAI(
+        model="gpt-4o-mini",  # Conforme especificado na fonte [3]
+        temperature=0,        # Geralmente 0 para tarefas baseadas em fatos como consultas SQL
+        api_key=openai_api_key
+    )
+    print(f"Modelo de IA '{llm.model_name}' configurado.")
 
-# 5. Criar o Agente de SQL
-agent_executor = create_sql_agent(
-    llm=llm, 
-    db=db, 
-    agent_type="openai-tools", 
-    verbose=True
-)
+    # 3. Criação do Agente SQL
+    # O LangChain fornece a função `create_sql_agent` para facilitar isso [5].
+    # O AgentType.OPENAI_FUNCTIONS é recomendado para modelos OpenAI.
+    # Verbose=True ajuda a ver os passos intermediários do agente.
+    agent_executor = create_sql_agent(
+        llm=llm,
+        db=db,
+        agent_type=AgentType.OPENAI_FUNCTIONS,
+        verbose=True
+    )
+    print("Agente de IA criado com sucesso. Você pode começar a conversar com seus dados.")
+    print("Para sair, digite 'sair' ou 'exit'.")
 
-# 6. Loop Principal (sem alterações)
-if __name__ == "__main__":
-    print("Olá! Sou um agente de IA conectado a um banco de dados. Faça sua pergunta.")
-    
+    # 4. Loop Conversacional
+    # Permite ao usuário "conversar" com os dados do banco de dados [1].
     while True:
-        try:
-            user_question = input("Você: ")
-            
-            if user_question.lower() == "sair":
-                print("Até mais!")
-                break
-            
-            response = agent_executor.invoke({"input": user_question})
-            
-            print(f"Agente: {response['output']}")
-
-        except Exception as e:
-            print(f"Ocorreu um erro: {e}")
+        user_query = input("\nSua pergunta: ")
+        if user_query.lower() in ["sair", "exit"]:
+            print("Encerrando a conversa. Até mais!")
             break
+
+        try:
+            # Invoca o agente com a pergunta do usuário
+            response = agent_executor.invoke({"input": user_query})
+            # A resposta do agente é o resultado da consulta ao banco de dados
+            print(f"Resposta: {response['output']}")
+        except Exception as e:
+            print(f"Ocorreu um erro ao processar sua pergunta: {e}")
+            print("Por favor, tente novamente ou verifique as configurações do agente/banco de dados.")
+
+if __name__ == "__main__":
+    main()
