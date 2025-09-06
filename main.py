@@ -39,7 +39,7 @@ def main():
 
     try:
         # Inicializa a conexão com o banco de dados usando LangChain
-        # LangChain pode inferir o esquema, mas um "mapa detalhado e customizado" [3]
+        # LangChain pode inferir o esquema, mas um "mapa detalhado e customizado"
         # pode ser fornecido através de ferramentas ou ajustes no prompt.
         db = SQLDatabase.from_uri(database_url)
         print("Conexão com o banco de dados PostgreSQL (Supabase) estabelecida.")
@@ -70,14 +70,14 @@ SELECT * FROM users;'''
          return
      
     llm = ChatOpenAI(
-         model="gpt-4.1-mini",  # Conforme especificado na fonte [3]
+         model="gpt-4.1-mini",  # Modelo LLM OpenAI (mais barato)
          temperature=0,        # Geralmente 0 para tarefas baseadas em fatos como consultas SQL
          api_key=openai_api_key
      )
     print(f"Modelo de IA '{llm.model_name}' configurado.")
     # 
     # # 3. Criação do Agente SQL para o OpenAI
-    # # O LangChain fornece a função `create_sql_agent` para facilitar isso [5].
+    # # O LangChain fornece a função `create_sql_agent` para facilitar isso.
     # # O AgentType.OPENAI_FUNCTIONS é recomendado para modelos OpenAI.
     # # Verbose=True ajuda a ver os passos intermediários do agente.
     sql_agent = create_sql_agent(
@@ -119,7 +119,7 @@ SELECT * FROM users;'''
     # print("Para sair, digite 'sair' ou 'exit'.")
 
     # 4. Loop Conversacional
-    # Permite ao usuário "conversar" com os dados do banco de dados [1].
+    # Permite ao usuário "conversar" com os dados do banco de dados.
     while True:
         try:
             user_query = input("\nSua pergunta: ")
