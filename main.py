@@ -61,7 +61,6 @@ SELECT * FROM users;'''
 
     # --- Configuração OpenAI ---
     # 2. Configuração do Modelo de IA (GPT-4.1-mini)
-
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
          print("Erro: A variável de ambiente OPENAI_API_KEY não está definida.")
@@ -74,12 +73,11 @@ SELECT * FROM users;'''
          api_key=openai_api_key
      )
     print(f"Modelo de IA '{llm.model_name}' configurado.")
-    # 
-    # # 3. Criação do Agente SQL para o OpenAI
-    # # O LangChain fornece a função `create_sql_agent` para facilitar isso.
-    # # O AgentType.OPENAI_FUNCTIONS é recomendado para modelos OpenAI.
-    # # Verbose=True ajuda a ver os passos intermediários do agente.
 
+    # 3. Criação do Agente SQL para o OpenAI
+    # O LangChain fornece a função `create_sql_agent` para facilitar isso.
+    # O AgentType.OPENAI_FUNCTIONS é recomendado para modelos OpenAI.
+    # Verbose=True ajuda a ver os passos intermediários do agente.
     sql_agent = create_sql_agent(
          llm=llm,
          db=db,
@@ -89,7 +87,6 @@ SELECT * FROM users;'''
      )
     print("Agente de IA criado com sucesso. Você pode começar a conversar com seus dados.")
     print("Para sair, digite 'sair' ou 'exit'.")
-
     # --- Fim da Configuração OpenAI ---
 
     # --- Configuração Google Gemini ---
