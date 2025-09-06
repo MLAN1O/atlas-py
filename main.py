@@ -59,10 +59,9 @@ SELECT * FROM users;'''
         )
     )
 
-    # --- Configuração OpenAI (Comentado) ---
+    # --- Configuração OpenAI ---
     # 2. Configuração do Modelo de IA (GPT-4.1-mini)
-    # A chave da API OpenAI deve ser carregada de variáveis de ambiente
-    # Ex: OPENAI_API_KEY="sua_chave_aqui"
+
     openai_api_key = os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
          print("Erro: A variável de ambiente OPENAI_API_KEY não está definida.")
@@ -70,8 +69,8 @@ SELECT * FROM users;'''
          return
      
     llm = ChatOpenAI(
-         model="gpt-4.1-mini",  # Modelo LLM OpenAI (mais barato)
-         temperature=0,        # Geralmente 0 para tarefas baseadas em fatos como consultas SQL
+         model="gpt-4.1-mini", 
+         temperature=0,
          api_key=openai_api_key
      )
     print(f"Modelo de IA '{llm.model_name}' configurado.")
@@ -80,6 +79,7 @@ SELECT * FROM users;'''
     # # O LangChain fornece a função `create_sql_agent` para facilitar isso.
     # # O AgentType.OPENAI_FUNCTIONS é recomendado para modelos OpenAI.
     # # Verbose=True ajuda a ver os passos intermediários do agente.
+
     sql_agent = create_sql_agent(
          llm=llm,
          db=db,
@@ -87,9 +87,12 @@ SELECT * FROM users;'''
          verbose=True,
          extra_prompt_messages=[prompt_message]
      )
+    print("Agente de IA criado com sucesso. Você pode começar a conversar com seus dados.")
+    print("Para sair, digite 'sair' ou 'exit'.")
+
     # --- Fim da Configuração OpenAI ---
 
-    # --- Configuração Google Gemini (Ativo) ---
+    # --- Configuração Google Gemini ---
     # 1. Configuração do Modelo de IA (Gemini)
     # A chave da API Google deve ser carregada de variáveis de ambiente
     # Ex: GOOGLE_API_KEY="sua_chave_aqui"
@@ -120,6 +123,7 @@ SELECT * FROM users;'''
 
     # 4. Loop Conversacional
     # Permite ao usuário "conversar" com os dados do banco de dados.
+
     while True:
         try:
             user_query = input("\nSua pergunta: ")
