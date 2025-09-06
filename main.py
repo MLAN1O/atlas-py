@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 # Importar componentes necessários do LangChain
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits.sql.base import create_sql_agent
-# from langchain_openai import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.agents.agent_types import AgentType
 from langchain_core.prompts import SystemMessagePromptTemplate, PromptTemplate
@@ -60,77 +60,81 @@ SELECT * FROM users;'''
     )
 
     # --- Configuração OpenAI (Comentado) ---
-    # # 2. Configuração do Modelo de IA (GPT-4o-mini)
-    # # A chave da API OpenAI deve ser carregada de variáveis de ambiente
-    # # Ex: OPENAI_API_KEY="sua_chave_aqui"
-    # openai_api_key = os.getenv("OPENAI_API_KEY")
-    # if not openai_api_key:
-    #     print("Erro: A variável de ambiente OPENAI_API_KEY não está definida.")
-    #     print("Por favor, configure sua chave da API OpenAI.")
-    #     return
+    # 2. Configuração do Modelo de IA (GPT-4.1-mini)
+    # A chave da API OpenAI deve ser carregada de variáveis de ambiente
+    # Ex: OPENAI_API_KEY="sua_chave_aqui"
+    openai_api_key = os.getenv("OPENAI_API_KEY")
+    if not openai_api_key:
+         print("Erro: A variável de ambiente OPENAI_API_KEY não está definida.")
+         print("Por favor, configure sua chave da API OpenAI.")
+         return
+     
+    llm = ChatOpenAI(
+         model="gpt-4.1-mini",  # Conforme especificado na fonte [3]
+         temperature=0,        # Geralmente 0 para tarefas baseadas em fatos como consultas SQL
+         api_key=openai_api_key
+     )
+    print(f"Modelo de IA '{llm.model_name}' configurado.")
     # 
-    # llm = ChatOpenAI(
-    #     model="gpt-4o-mini",  # Conforme especificado na fonte [3]
-    #     temperature=0,        # Geralmente 0 para tarefas baseadas em fatos como consultas SQL
-    #     api_key=openai_api_key
-    # )
-    # print(f"Modelo de IA '{llm.model_name}' configurado.")
-    # 
-    # # 3. Criação do Agente SQL
+    # # 3. Criação do Agente SQL para o OpenAI
     # # O LangChain fornece a função `create_sql_agent` para facilitar isso [5].
     # # O AgentType.OPENAI_FUNCTIONS é recomendado para modelos OpenAI.
     # # Verbose=True ajuda a ver os passos intermediários do agente.
-    # agent_executor = create_sql_agent(
-    #     llm=llm,
-    #     db=db,
-    #     agent_type=AgentType.OPENAI_FUNCTIONS,
-    #     verbose=True,
-    #     extra_prompt_messages=[prompt_message]
-    # )
+    sql_agent = create_sql_agent(
+         llm=llm,
+         db=db,
+         agent_type=AgentType.OPENAI_FUNCTIONS,
+         verbose=True,
+         extra_prompt_messages=[prompt_message]
+     )
     # --- Fim da Configuração OpenAI ---
 
     # --- Configuração Google Gemini (Ativo) ---
-    # 2. Configuração do Modelo de IA (Gemini)
+    # 1. Configuração do Modelo de IA (Gemini)
     # A chave da API Google deve ser carregada de variáveis de ambiente
     # Ex: GOOGLE_API_KEY="sua_chave_aqui"
-    google_api_key = os.getenv("GOOGLE_API_KEY")
-    if not google_api_key:
-        print("Erro: A variável de ambiente GOOGLE_API_KEY não está definida.")
-        print("Por favor, configure sua chave da API Google.")
-        return
+    # google_api_key = os.getenv("GOOGLE_API_KEY")
+    # if not google_api_key:
+    #     print("Erro: A variável de ambiente GOOGLE_API_KEY não está definida.")
+    #     print("Por favor, configure sua chave da API Google.")
+    #     return
+# 
+    # llm = ChatGoogleGenerativeAI(
+    #     model="gemini-2.5-flash-lite",
+    #     temperature=0,
+    #     google_api_key=google_api_key,
+    # )
+    # print(f"Modelo de IA 'gemini-2.5-flash-lite' configurado.")
 
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-lite",
-        temperature=0,
-        google_api_key=google_api_key,
-    )
-    print(f"Modelo de IA 'gemini-2.5-flash-lite' configurado.")
-
-    # 3. Criação do Agente SQL
+    # 2. Criação do Agente SQL para o GEMINI
     # Para o Gemini, não especificamos o agent_type, permitindo que o LangChain
     # utilize o suporte nativo a "tool calling" do modelo.
-    agent_executor = create_sql_agent(
-        llm=llm,
-        db=db,
-        verbose=True,
-        extra_prompt_messages=[prompt_message]
-    )
-    print("Agente de IA criado com sucesso. Você pode começar a conversar com seus dados.")
-    print("Para sair, digite 'sair' ou 'exit'.")
+    # sql_agent = create_sql_agent(
+    #     llm=llm,
+    #     db=db,
+    #     verbose=True,
+    #     extra_prompt_messages=[prompt_message]
+    # )
+    # print("Agente de IA criado com sucesso. Você pode começar a conversar com seus dados.")
+    # print("Para sair, digite 'sair' ou 'exit'.")
 
     # 4. Loop Conversacional
     # Permite ao usuário "conversar" com os dados do banco de dados [1].
     while True:
-        user_query = input("\nSua pergunta: ")
-        if user_query.lower() in ["sair", "exit"]:
-            print("Encerrando a conversa. Até mais!")
-            break
-
         try:
+            user_query = input("\nSua pergunta: ")
+            if user_query.lower() in ["sair", "exit"]:
+                print("Encerrando a conversa. Até mais!")
+                break
+
             # Invoca o agente com a pergunta do usuário
-            response = agent_executor.invoke({"input": user_query})
+            response = sql_agent.invoke({"input": user_query})
             # A resposta do agente é o resultado da consulta ao banco de dados
             print(f"Resposta: {response['output']}")
+
+        except KeyboardInterrupt:
+            print("\nExecução interrompida pelo usuário. Encerrando...")
+            break # Encerra o loop de forma limpa
         except Exception as e:
             print(f"Ocorreu um erro ao processar sua pergunta: {e}")
             print("Por favor, tente novamente ou verifique as configurações do agente/banco de dados.")
