@@ -1,11 +1,18 @@
 # app/agents/orchestrator_agent.py
 from typing import List
 from langchain.agents import AgentExecutor, Tool, create_openai_tools_agent
+from langchain.tools import StructuredTool
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.runnables import Runnable
+from pydantic.v1 import BaseModel, Field
 
 # Importa o prompt que define a lógica do orquestrador
 from app.prompts.orchestrator_prompts import OrchestratorPrompt
+
+# Define o schema de entrada para a ReportFormattingTool
+class ReportToolInput(BaseModel):
+    user_intent: str = Field(description="The user's original request or intent.")
+    operation_result: str = Field(description="The result of the previous tool's operation.")
 
 def create_orchestrator_agent_executor(
     llm: BaseLanguageModel,
@@ -15,23 +22,18 @@ def create_orchestrator_agent_executor(
 ) -> AgentExecutor:
     """
     Cria o Agente Orquestrador principal.
-
-    Este agente recebe os outros agentes/chains como ferramentas e usa um prompt
-    especializado para orquestrar o fluxo de trabalho.
-
-    Args:
-        llm: O modelo de linguagem a ser usado pelo orquestrador.
-        sql_agent_executor: O agente SQL (para leitura).
-        entry_agent_executor: O agente de entrada (para escrita).
-        report_chain: A chain de formatação de relatório.
-
-    Returns:
-        O executor do Agente Orquestrador.
     """
 
+    # Função adaptadora para a ferramenta de relatório.
+    # Ela recebe os argumentos da StructuredTool e os formata no dicionário
+    # que a report_chain.invoke espera.
+    def report_chain_wrapper(user_intent: str, operation_result: str):
+        return report_chain.invoke({
+            "user_intent": user_intent,
+            "operation_result": operation_result
+        })
+
     # 1. Cria as ferramentas para o Orquestrador.
-    # Cada ferramenta é um dos sub-agentes. O nome da ferramenta é crucial,
-    # pois é como o prompt se refere a ela.
     tools: List[Tool] = [
         Tool(
             name="SQLQueryTool",
@@ -43,14 +45,15 @@ def create_orchestrator_agent_executor(
             func=entry_agent_executor.invoke,
             description="Use for any operation that writes to the database, including INSERT, UPDATE, or DELETE. The input must be a dictionary specifying the operation details."
         ),
-        Tool(
+        StructuredTool(
             name="ReportFormattingTool",
-            func=report_chain.invoke,
-            description="Use at the end to format the final response. Input must be a dictionary with 'user_intent' and 'operation_result'."
+            func=report_chain_wrapper, # Usa a função adaptadora
+            description="Use at the end to format the final response. This tool requires specific arguments.",
+            args_schema=ReportToolInput
         ),
     ]
 
-    # 2. Cria o agente orquestrador usando o prompt e as ferramentas.
+    # 2. Cria o agente orquestrador.
     agent = create_openai_tools_agent(
         llm=llm, 
         tools=tools, 
