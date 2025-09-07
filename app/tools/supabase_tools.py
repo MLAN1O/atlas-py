@@ -2,33 +2,65 @@
 from langchain_community.utilities import SQLDatabase
 from app.core.config import DATABASE_URL, SUPABASE_URL, SUPABASE_KEY
 from supabase import create_client, Client
-from typing import Dict, Any
+from typing import Dict, Any, List
+
+# --- Configuração do Cliente Supabase ---
+
+try:
+    print("Inicializando cliente da API do Supabase...")
+    supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    print("Cliente da API do Supabase inicializado.")
+except Exception as e:
+    print(f"Erro fatal ao inicializar o cliente Supabase: {e}")
+    raise
+
+# --- Funções de Metadados ---
+
+def get_all_table_names() -> List[str]:
+    """
+    Busca e retorna uma lista com os nomes de todas as tabelas visíveis no schema 'public'.
+    """
+    try:
+        print("Buscando esquemas de tabelas...")
+        # O método rpc() chama uma função PostgreSQL. Neste caso, uma função customizada
+        # ou uma consulta que busca os nomes das tabelas do information_schema.
+        # Se você não tiver uma função `get_table_names`, pode usar uma consulta direta
+        # se o seu setup permitir, ou listar manualmente.
+        # Abordagem mais robusta é usar a API de metadados do próprio Supabase/PostgREST.
+        # Por simplicidade, vamos assumir que podemos fazer uma chamada para pegar as tabelas.
+        # Esta é uma forma de simular a busca de metadados:
+        response = supabase_client.rpc('get_table_names', {}).execute()
+        if response.data:
+            table_names = [item['table_name'] for item in response.data]
+            print(f"Tabelas encontradas: {table_names}")
+            return table_names
+        else:
+            # Fallback para uma lista manual se a função RPC não existir
+            print("Função RPC 'get_table_names' não encontrada ou sem retorno. Usando lista de fallback.")
+            return ["custos", "vendas", "inventario", "abates", "categorias_custos"]
+    except Exception as e:
+        print(f"Erro ao buscar nomes das tabelas via RPC: {e}. Usando lista de fallback.")
+        # Em caso de erro, retorna uma lista de tabelas conhecidas como fallback
+        return ["custos", "vendas", "inventario", "abates", "categorias_custos"]
 
 # --- Ferramenta de Leitura (para SQL Agent) ---
 
 def get_database_connection():
     """
-    Inicializa e retorna uma conexão de banco de dados LangChain para consultas SQL.
+    Inicializa e retorna uma conexão de banco de dados LangChain, 
+    incluindo o esquema de todas as tabelas disponíveis.
     """
     try:
         print("Estabelecendo conexão SQL (leitura)...")
-        db = SQLDatabase.from_uri(DATABASE_URL)
-        print("Conexão SQL (leitura) estabelecida.")
+        table_names = get_all_table_names()
+        db = SQLDatabase.from_uri(DATABASE_URL, include_tables=table_names)
+        print("Conexão SQL (leitura) estabelecida com esquemas.")
         return db
     except Exception as e:
         print(f"Erro fatal ao conectar via SQL: {e}")
         raise
 
 # --- Ferramentas de Escrita (para Entry Agent) ---
-
-# Inicializa o cliente da API do Supabase
-try:
-    print("Inicializando cliente da API do Supabase (escrita)...")
-    supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    print("Cliente da API do Supabase inicializado.")
-except Exception as e:
-    print(f"Erro fatal ao inicializar o cliente Supabase: {e}")
-    raise
 
 def insert_record(table_name: str, record: Dict[str, Any]) -> str:
     """
@@ -37,10 +69,10 @@ def insert_record(table_name: str, record: Dict[str, Any]) -> str:
     try:
         print(f"Inserindo registro na tabela '{table_name}': {record}")
         data, count = supabase_client.table(table_name).insert(record).execute()
-        if count > 0 and len(data) > 1 and data[1]:
+        # A resposta da API do Supabase mudou. Acessamos o campo 'data' diretamente.
+        if data and len(data) > 1 and data[1]:
             return f"Registro inserido com sucesso: {data[1][0]}"
-        else:
-            return "A operação de inserção foi executada, mas não retornou os dados esperados (verifique a RLS)."
+        return "A operação de inserção foi executada, mas o retorno não foi como o esperado."
     except Exception as e:
         return f"Falha ao inserir registro. Erro: {e}"
 
@@ -51,23 +83,148 @@ def update_record(table_name: str, record_id: Any, updates: Dict[str, Any]) -> s
     try:
         print(f"Atualizando registro ID '{record_id}' na tabela '{table_name}' com os dados: {updates}")
         data, count = supabase_client.table(table_name).update(updates).eq('id', record_id).execute()
-        if count > 0 and len(data) > 1 and data[1]:
+        if data and len(data) > 1 and data[1]:
             return f"Registro ID '{record_id}' atualizado com sucesso: {data[1][0]}"
-        else:
-            return f"Nenhum registro encontrado com o ID '{record_id}' para atualizar."
+        return f"Nenhum registro encontrado com o ID '{record_id}' para atualizar."
     except Exception as e:
         return f"Falha ao atualizar o registro ID '{record_id}'. Erro: {e}"
+
+
+# app/tools/supabase_tools.py
+# app/tools/supabase_tools.py
+# app/tools/supabase_tools.py
+import psycopg2
+import logging
+from langchain_community.utilities import SQLDatabase
+from app.core.config import (
+    DATABASE_URL, SUPABASE_URL, SUPABASE_KEY, 
+    DB_HOST, DB_NAME, DB_USER, DB_PASS, DB_PORT
+)
+from supabase import create_client, Client
+from typing import Dict, Any, List
+
+# Configuração do logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# --- Configuração do Cliente Supabase ---
+
+try:
+    logger.info("Inicializando cliente da API do Supabase...")
+    supabase_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+    logger.info("Cliente da API do Supabase inicializado.")
+except Exception as e:
+    logger.error(f"Erro fatal ao inicializar o cliente Supabase: {e}")
+    raise
+
+# --- Funções de Metadados ---
+
+def get_all_table_names() -> List[str]:
+    """
+    Busca e retorna uma lista com os nomes de todas as tabelas base (excluindo views)
+    visíveis no schema 'public' usando uma conexão SQL direta.
+    """
+    logger.info("Buscando esquemas de tabelas (excluindo views) via conexão SQL direta...")
+    try:
+        conn = psycopg2.connect(
+            dbname=DB_NAME,
+            user=DB_USER,
+            password=DB_PASS,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        cursor = conn.cursor()
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'")
+        tables = cursor.fetchall()
+        table_names = [table[0] for table in tables]
+        cursor.close()
+        conn.close()
+        logger.info(f"Tabelas encontradas: {table_names}")
+        return table_names
+    except Exception as e:
+        logger.error(f"Erro crítico ao buscar nomes de tabelas com SQL: {e}")
+        raise
+
+# --- Ferramenta de Leitura (para SQL Agent) ---
+
+def get_database_connection():
+    """
+    Inicializa e retorna uma conexão de banco de dados LangChain.
+    """
+    try:
+        logger.info("Estabelecendo conexão SQL (leitura)...")
+        table_names = get_all_table_names()
+        db = SQLDatabase.from_uri(DATABASE_URL, include_tables=table_names)
+        logger.info("Conexão SQL (leitura) estabelecida com esquemas.")
+        return db
+    except Exception as e:
+        logger.error(f"Erro fatal ao conectar via SQL: {e}")
+        raise
+
+# --- Ferramentas de Escrita (para Entry Agent) ---
+
+def insert_record(table_name: str, record: Dict[str, Any]) -> str:
+    """
+    Insere um único registro em uma tabela específica no Supabase.
+    """
+    logger.info(f"Iniciando inserção na tabela '{table_name}' com o registro: {record}")
+    try:
+        response = supabase_client.table(table_name).insert(record).execute()
+        logger.info(f"Resposta da API Supabase (insert): {response}")
+
+        # Verificação robusta da resposta
+        if response.data and len(response.data) > 0:
+            # O Supabase retorna uma lista de registros inseridos. Pegamos o primeiro.
+            inserted_record = response.data[0]
+            return f"Registro inserido com sucesso: {inserted_record}"
+        else:
+            logger.warning(f"A operação de inserção na tabela '{table_name}' não retornou dados. Resposta: {response}")
+            return "A operação de inserção foi executada, mas não retornou dados para confirmação."
+
+    except StopIteration:
+        logger.error("Erro de StopIteration capturado durante a inserção. Isso pode indicar um problema com o stream de resposta do Supabase.")
+        return "Erro crítico: Ocorreu um StopIteration ao tentar inserir o registro."
+    except Exception as e:
+        logger.error(f"Falha ao inserir registro na tabela '{table_name}'. Erro: {e}")
+        return f"Falha ao inserir registro. Erro: {e}"
+
+def update_record(table_name: str, record_id: Any, updates: Dict[str, Any]) -> str:
+    """
+    Atualiza um registro específico em uma tabela com base em seu ID.
+    """
+    logger.info(f"Iniciando atualização na tabela '{table_name}' para o ID '{record_id}' com os dados: {updates}")
+    try:
+        response = supabase_client.table(table_name).update(updates).eq('id', record_id).execute()
+        logger.info(f"Resposta da API Supabase (update): {response}")
+
+        if response.data and len(response.data) > 0:
+            updated_record = response.data[0]
+            return f"Registro ID '{record_id}' atualizado com sucesso: {updated_record}"
+        else:
+            logger.warning(f"Nenhum registro encontrado com o ID '{record_id}' para atualizar na tabela '{table_name}'.")
+            return f"Nenhum registro encontrado com o ID '{record_id}' para atualizar."
+
+    except Exception as e:
+        logger.error(f"Falha ao atualizar o registro ID '{record_id}'. Erro: {e}")
+        return f"Falha ao atualizar o registro. Erro: {e}"
 
 def delete_record(table_name: str, record_id: Any) -> str:
     """
     Deleta um registro específico em uma tabela com base em seu ID.
     """
+    logger.info(f"Iniciando deleção na tabela '{table_name}' para o ID '{record_id}'...")
     try:
-        print(f"Deletando registro ID '{record_id}' da tabela '{table_name}'...")
-        data, count = supabase_client.table(table_name).delete().eq('id', record_id).execute()
-        if count > 0 and len(data) > 1 and data[1]:
-            return f"Registro ID '{record_id}' deletado com sucesso: {data[1][0]}"
+        response = supabase_client.table(table_name).delete().eq('id', record_id).execute()
+        logger.info(f"Resposta da API Supabase (delete): {response}")
+
+        if response.data and len(response.data) > 0:
+            deleted_record = response.data[0]
+            return f"Registro ID '{record_id}' deletado com sucesso: {deleted_record}"
         else:
+            logger.warning(f"Nenhum registro encontrado com o ID '{record_id}' para deletar na tabela '{table_name}'.")
             return f"Nenhum registro encontrado com o ID '{record_id}' para deletar."
+
     except Exception as e:
-        return f"Falha ao deletar o registro ID '{record_id}'. Erro: {e}"
+        logger.error(f"Falha ao deletar o registro ID '{record_id}'. Erro: {e}")
+        return f"Falha ao deletar o registro. Erro: {e}"
+
