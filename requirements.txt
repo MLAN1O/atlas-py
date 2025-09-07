@@ -5,3 +5,4 @@ langchain-openai
 psycopg2-binary
 python-dotenv
 SQLAlchemy
+supabase

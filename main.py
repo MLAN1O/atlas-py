@@ -1,68 +1,54 @@
 # main.py
-# Ponto de entrada principal da aplicação
+# Ponto de entrada principal da aplicação que monta e executa o Agente Orquestrador.
 
-# Importa as funções e classes necessárias dos módulos refatorados
+# Importa os componentes de configuração e ferramentas
 from app.core.config import OPENAI_API_KEY, GOOGLE_API_KEY
 from app.tools.supabase_tools import get_database_connection
+
+# Importa os construtores de todos os agentes e chains
 from app.agents.sql_agent import create_sql_agent_executor
+from app.agents.entry_agent import create_entry_agent_executor
+from app.agents.report_agent import create_report_chain
+from app.agents.orchestrator_agent import create_orchestrator_agent_executor
 
 # Importa os modelos de linguagem do LangChain
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 
+
 def main():
     """
-    Função principal para inicializar e executar o Agente de IA.
+    Função principal que inicializa todos os componentes e inicia o loop de conversa.
     """
     print("--- Iniciando o Agente Financeiro Proativo ---")
 
-    # 1. Inicializa a conexão com o banco de dados usando a ferramenta dedicada
+    # 1. Inicializa o LLM (Modelo de Linguagem)
+    # Usaremos o mesmo LLM para todos os agentes para consistência.
+    llm = ChatOpenAI(model="gpt-4.1-mini", temperature=0, api_key=OPENAI_API_KEY)
+    print(f"Usando o modelo: {llm.model_name}")
+
+    # 2. Inicializa as ferramentas e sub-agentes
     try:
         db_connection = get_database_connection()
-    except Exception:
-        # A função get_database_connection já imprime o erro detalhado.
-        print("--- Encerramento devido a erro de conexão ---")
+        sql_agent = create_sql_agent_executor(llm=llm, db=db_connection)
+        entry_agent = create_entry_agent_executor(llm=llm)
+        report_chain = create_report_chain(llm=llm)
+    except Exception as e:
+        print(f"Erro durante a inicialização dos componentes: {e}")
         return
 
-    # 2. Configuração do Modelo de IA (LLM)
-    # A lógica para escolher ou configurar o LLM fica aqui, no ponto de entrada.
-    
-    # --- Configuração OpenAI (Padrão) ---
-    if not OPENAI_API_KEY:
-        print("Erro: OPENAI_API_KEY não encontrada. Verifique seu arquivo .env")
-        return
-    
-    llm = ChatOpenAI(
-        model="gpt-4.1-mini", 
-        temperature=0,
-        api_key=OPENAI_API_KEY
+    # 3. Cria o Agente Orquestrador, passando os outros agentes como ferramentas
+    orchestrator = create_orchestrator_agent_executor(
+        llm=llm,
+        sql_agent_executor=sql_agent,
+        entry_agent_executor=entry_agent,
+        report_chain=report_chain
     )
-    print(f"Usando o modelo: {llm.model_name}")
-    # --- Fim da Configuração OpenAI ---
 
-    # --- Configuração Google Gemini (Alternativa) ---
-    # Para usar o Gemini, comente o bloco OpenAI acima e descomente este.
-    # if not GOOGLE_API_KEY:
-    #     print("Erro: GOOGLE_API_KEY não encontrada. Verifique seu arquivo .env")
-    #     return
-    #
-    # llm = ChatGoogleGenerativeAI(
-    #     model="gemini-1.5-flash-latest",
-    #     temperature=0,
-    #     google_api_key=GOOGLE_API_KEY,
-    # )
-    # print(f"Usando o modelo: {llm.model}")
-    # --- Fim da Configuração Google Gemini ---
-
-    # 3. Criação do Agente SQL
-    # A função de criação do agente é chamada, passando o LLM e o DB já prontos.
-    sql_agent_executor = create_sql_agent_executor(llm=llm, db=db_connection)
-
-    print("\nAgente pronto para uso. Converse com seus dados!")
+    print("\n🤖 Agente Orquestrador pronto. Você pode começar a conversar.")
     print("Para sair, digite 'sair' ou 'exit'.")
 
-    # 4. Loop Conversacional
-    # O loop de interação com o usuário fica no ponto de entrada da aplicação.
+    # 4. Loop Conversacional com o Orquestrador
     while True:
         try:
             user_query = input("\nSua pergunta: ")
@@ -70,15 +56,17 @@ def main():
                 print("Encerrando a conversa. Até mais!")
                 break
 
-            # Invoca o agente com a pergunta do usuário
-            response = sql_agent_executor.invoke({"input": user_query})
-            print(f"Resposta: {response['output']}")
+            # Invoca o orquestrador com a pergunta do usuário
+            response = orchestrator.invoke({"input": user_query})
+            
+            # A resposta final já deve vir formatada pelo report_agent
+            print(f"\nResposta:\n{response['output']}")
 
         except KeyboardInterrupt:
             print("\nExecução interrompida pelo usuário. Encerrando...")
             break
         except Exception as e:
-            print(f"Ocorreu um erro: {e}")
+            print(f"Ocorreu um erro durante a execução: {e}")
 
 if __name__ == "__main__":
     main()
