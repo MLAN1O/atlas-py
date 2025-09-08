@@ -119,26 +119,46 @@ def buscar_custos_similares(termo_busca: str) -> dict | None:
         return {"error": f"Erro ao buscar custos similares: {str(e)}"}
 
 @tool
-def buscar_vendas_similares(cliente: str = "", estabelecimento: str = "") -> list[dict] | None:
+def buscar_vendas_similares(cliente: str = "", estabelecimento: str = "", produto: str = "") -> list[dict] | None:
     """
-    Busca até 3 vendas mais recentes cujo cliente ou estabelecimento seja semelhante aos parâmetros.
+    Busca até 3 vendas recentes combinando filtros de forma específica: (cliente OU estabelecimento) E produto.
+    - O parâmetro 'produto' é OBRIGATÓRIO.
+    - Pelo menos um dos parâmetros 'cliente' ou 'estabelecimento' também deve ser fornecido.
+    Retorna vendas que correspondam ao produto E também ao cliente ou ao estabelecimento informado.
     """
     try:
+        # --- Travas de Segurança (Guard Clauses) ---
+        # 1. O produto é obrigatório para esta busca.
+        if not produto:
+            # Você pode retornar um erro ou simplesmente None se a condição principal não for atendida.
+            # Neste caso, não há o que buscar.
+            return None 
+
+        # 2. Pelo menos um (cliente ou estabelecimento) deve ser fornecido junto com o produto.
+        if not cliente and not estabelecimento:
+            return None
+
+        # --- Construção da Query ---
+        # Inicia a query base
         query = supabase_client.table('vendas').select('*')
 
-        # Aplicar filtros somente se vierem valores
-        filtros = []
+        # Etapa 1: Aplica o filtro 'E (AND)' que é sempre obrigatório.
+        # A query agora busca apenas vendas que correspondam ao produto.
+        query = query.ilike('produto', f'%{produto}%')
+
+        # Etapa 2: Constrói e aplica a parte '(cliente OU estabelecimento)' da consulta.
+        filtros_or = []
         if cliente:
-            filtros.append(f"cliente.ilike.%{cliente}%")
+            filtros_or.append(f"cliente.ilike.%{cliente}%")
         if estabelecimento:
-            filtros.append(f"estabelecimento.ilike.%{estabelecimento}%")
+            filtros_or.append(f"estabelecimento.ilike.%{estabelecimento}%")
+        
+        # Adiciona a condição OR à query que já contém o filtro de produto.
+        # O método .join() lida bem se houver um ou dois itens na lista.
+        query = query.or_(",".join(filtros_or))
 
-        if filtros:
-            # Se houver mais de um filtro, usar OR
-            query = query.or_(",".join(filtros)) if len(filtros) > 1 else query.ilike(
-                "cliente" if cliente else "estabelecimento", filtros[0].split(".ilike.")[1].strip("%")
-            )
-
+        # --- Execução ---
+        # Executa a query final, que agora tem a lógica (X OR Y) AND Z
         response = query.order('data', desc=True).limit(3).execute()
         return response.data if response.data else None
 
@@ -147,14 +167,17 @@ def buscar_vendas_similares(cliente: str = "", estabelecimento: str = "") -> lis
 
 
 @tool
-def buscar_abates_similares(id_lote: int = None) -> dict | None:
-    """Busca o abate mais recente, opcionalmente filtrando por lote, para inferir padrões."""
+def buscar_abates_similares(especie: str = None, tanque_gaiola: str = None) -> dict | None:
+    """Busca o abate mais recente, opcionalmente filtrando por espécie ou tanque/gaiola, para inferir padrões."""
     try:
         query = supabase_client.table('abates').select('*')
-        if id_lote:
-            query = query.eq('id_lote', id_lote)
         
-        response = query.order('data_abate', desc=True).limit(1).execute()
+        if especie:
+            query = query.ilike('especie', f'%{especie}%')
+        if tanque_gaiola:
+            query = query.ilike('tanque_gaiola', f'%{tanque_gaiola}%')
+
+        response = query.order('data', desc=True).limit(1).execute()
         return response.data[0] if response.data else None
     except Exception as e:
         return {"error": f"Erro ao buscar abates similares: {str(e)}"}
