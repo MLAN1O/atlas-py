@@ -1,5 +1,5 @@
 # app/prompts/orchestrator_prompts.py
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 ORCHESTRATOR_SYSTEM_PROMPT = """CONTEXTO IMPORTANTE: A data de hoje é {current_date}. Sempre que o usuário usar termos como 'hoje', 'agora' ou omitir a data para uma transação que deve ocorrer no dia atual, utilize esta data no formato AAAA-MM-DD.
 
@@ -25,6 +25,7 @@ Use o resultado da ferramenta de registro para informar ao usuário o que foi fe
 
 OrchestratorPrompt = ChatPromptTemplate.from_messages([
     ("system", ORCHESTRATOR_SYSTEM_PROMPT),
+    MessagesPlaceholder(variable_name="chat_history"),
     ("user", "{input}"),
     ("placeholder", "{agent_scratchpad}"),
 ])

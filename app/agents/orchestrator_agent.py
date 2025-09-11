@@ -1,10 +1,11 @@
 # app/agents/orchestrator_agent.py
-from typing import List
+from typing import List, Any
 from langchain.agents import AgentExecutor, Tool, create_openai_tools_agent
 from langchain.tools import StructuredTool
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.runnables import Runnable
 from pydantic.v1 import BaseModel, Field
+
 
 # Importa o prompt que define a lógica do orquestrador
 from app.prompts.orchestrator_prompts import OrchestratorPrompt
@@ -20,7 +21,8 @@ def create_orchestrator_agent_executor(
     llm: BaseLanguageModel,
     sql_agent_executor: AgentExecutor,
     report_chain: Runnable,
-    current_date: str
+    current_date: str,
+    memory: Any
 ) -> AgentExecutor:
     """
     Cria o Agente Orquestrador principal.
@@ -68,6 +70,7 @@ def create_orchestrator_agent_executor(
         agent=agent, 
         tools=all_tools, 
         verbose=True,
+        memory=memory,
         handle_parsing_errors=True
     )
     print("Executor do Agente Orquestrador criado.")
