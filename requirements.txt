@@ -7,3 +7,5 @@ python-dotenv
 SQLAlchemy
 supabase
 pydantic
+langgraph
+langgraph-checkpoint-sqlite

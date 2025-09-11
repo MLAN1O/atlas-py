@@ -154,7 +154,7 @@ def buscar_abates_similares(id_lote: int = None) -> dict | None:
         if id_lote:
             query = query.eq('id_lote', id_lote)
         
-        response = query.order('data_abate', desc=True).limit(1).execute()
+        response = query.order('data', desc=True).limit(1).execute()
         return response.data[0] if response.data else None
     except Exception as e:
         return {"error": f"Erro ao buscar abates similares: {str(e)}"}
