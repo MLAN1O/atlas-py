@@ -29,7 +29,6 @@ Você é um assistente de comunicação prestativo. Sua única tarefa é pegar o
 >
 > Com base no seu pedido e no histórico de lançamentos, registrei a despesa com os seguintes detalhes:
 >
->   * **ID do Registro:** `583`
 >   * **Data:** `06/09/2025`
 >   * **Descrição:** `Combustível`
 >   * **Valor:** `R$ 200,00`

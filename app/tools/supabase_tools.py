@@ -37,11 +37,11 @@ def get_all_table_names() -> List[str]:
         else:
             # Fallback para uma lista manual se a função RPC não existir
             print("Função RPC 'get_table_names' não encontrada ou sem retorno. Usando lista de fallback.")
-            return ["custos", "vendas", "inventario", "abates", "categorias_custos"]
+            return ["custos", "vendas","abates"]
     except Exception as e:
         print(f"Erro ao buscar nomes das tabelas via RPC: {e}. Usando lista de fallback.")
         # Em caso de erro, retorna uma lista de tabelas conhecidas como fallback
-        return ["custos", "vendas", "inventario", "abates", "categorias_custos"]
+        return ["custos", "vendas", "abates"]
 
 # --- Ferramenta de Leitura (para SQL Agent) ---
 
@@ -59,36 +59,6 @@ def get_database_connection():
     except Exception as e:
         print(f"Erro fatal ao conectar via SQL: {e}")
         raise
-
-# --- Ferramentas de Escrita (para Entry Agent) ---
-
-def insert_record(table_name: str, record: Dict[str, Any]) -> str:
-    """
-    Insere um único registro em uma tabela específica no Supabase.
-    """
-    try:
-        print(f"Inserindo registro na tabela '{table_name}': {record}")
-        data, count = supabase_client.table(table_name).insert(record).execute()
-        # A resposta da API do Supabase mudou. Acessamos o campo 'data' diretamente.
-        if data and len(data) > 1 and data[1]:
-            return f"Registro inserido com sucesso: {data[1][0]}"
-        return "A operação de inserção foi executada, mas o retorno não foi como o esperado."
-    except Exception as e:
-        return f"Falha ao inserir registro. Erro: {e}"
-
-def update_record(table_name: str, record_id: Any, updates: Dict[str, Any]) -> str:
-    """
-    Atualiza um registro específico em uma tabela com base em seu ID.
-    """
-    try:
-        print(f"Atualizando registro ID '{record_id}' na tabela '{table_name}' com os dados: {updates}")
-        data, count = supabase_client.table(table_name).update(updates).eq('id', record_id).execute()
-        if data and len(data) > 1 and data[1]:
-            return f"Registro ID '{record_id}' atualizado com sucesso: {data[1][0]}"
-        return f"Nenhum registro encontrado com o ID '{record_id}' para atualizar."
-    except Exception as e:
-        return f"Falha ao atualizar o registro ID '{record_id}'. Erro: {e}"
-
 
 # app/tools/supabase_tools.py
 # app/tools/supabase_tools.py
