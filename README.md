@@ -19,12 +19,12 @@ The system uses **LangGraph** to handle the decision-making flow between acting 
 
 ## Tech Stack
 
-- **Python 3.10+**: Core backend logic.
-- **LangChain & LangGraph**: Orchestration and state management.
-- **OpenAI (GPT-4o-mini)**: Chosen for its speed and ability to understand business context at a low cost.
-- **Supabase (PostgreSQL)**: The central database for all company data.
-- **Pydantic**: Ensures data integrity by validating inputs before they hit the database.
-- **Evolution API**: Gateway for WhatsApp messaging.
+- **Python 3.10+**
+- **LangChain & LangGraph**
+- **OpenAI (GPT-4o-mini)**
+- **Supabase (PostgreSQL)**
+- **Pydantic**
+- **Evolution API**
 
 ## Project Structure
 
