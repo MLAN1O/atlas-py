@@ -1,47 +1,48 @@
 # app/agents/sql_agent.py
-from langchain_community.agent_toolkits.sql.base import create_sql_agent
-from langchain.agents.agent_types import AgentType
-from langchain_core.prompts import SystemMessagePromptTemplate, PromptTemplate
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langgraph.prebuilt import create_react_agent
+from langchain_core.messages import SystemMessage
 from langchain_community.utilities import SQLDatabase
 from langchain_core.language_models import BaseLanguageModel
 
-def create_sql_agent_executor(llm: BaseLanguageModel, db: SQLDatabase):
+def create_sql_agent_graph(llm: BaseLanguageModel, db: SQLDatabase):
     """
-    Cria um executor de agente SQL.
+    Cria um agente SQL usando LangGraph (create_react_agent).
 
     Args:
-        llm (BaseLanguageModel): O modelo de linguagem a ser usado pelo agente.
-        db (SQLDatabase): A conexão do banco de dados LangChain.
+        llm (BaseLanguageModel): O modelo de linguagem.
+        db (SQLDatabase): O banco de dados.
 
     Returns:
-        AgentExecutor: O agente SQL criado.
+        CompiledGraph: O grafo do agente SQL.
     """
-    # Mensagem do sistema para instruir o LLM a não usar Markdown na query
-    prompt_message = SystemMessagePromptTemplate(
-        prompt=PromptTemplate(
-            input_variables=[],
-            template='''
-IMPORTANT: When providing a SQL query, you MUST NOT use any markdown formatting.
-The SQL query must be a single, raw string. For example:
-SELECT * FROM users;'''
-        )
-    )
-
-    print(f"Criando agente SQL com o modelo: {llm.__class__.__name__}")
-
-    # Nota: O agent_type pode variar dependendo do modelo.
-    # Para os modelos mais recentes da OpenAI e Google, não especificar o agent_type
-    # geralmente permite que o LangChain escolha a melhor abordagem (tool calling).
-    # Para outros, como `AgentType.OPENAI_FUNCTIONS`, pode ser necessário.
-    # Vamos manter a lógica flexível.
     
-    agent_executor = create_sql_agent(
-        llm=llm,
-        db=db,
-        # agent_type=AgentType.OPENAI_FUNCTIONS, # Opcional, dependendo do LLM
-        verbose=True,
-        extra_prompt_messages=[prompt_message]
+    # 1. Cria o toolkit SQL para obter as ferramentas
+    toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+    tools = toolkit.get_tools()
+
+    # 2. Define o System Prompt
+    system_message = SystemMessage(content='''
+IMPORTANT: You are an agent designed to interact with a SQL database.
+Given an input question, create a syntactically correct SQL query to run, then look at the results of the query and return the answer.
+Unless the user specifies a specific number of examples they wish to obtain, always limit your query to at most 5 results.
+You can order the results by a relevant column to return the most interesting examples in the database.
+Never query for all the columns from a specific table, only ask for the relevant columns given the question.
+You have access to tools for interacting with the database.
+Only use the below tools. Only use the information returned by the below tools to construct your final answer.
+You MUST NOT use any markdown formatting in the SQL query itself (e.g., ```sql ... ```).
+The SQL query must be a single, raw string passed to the tool.
+''')
+
+    print(f"Criando agente SQL (LangGraph) com o modelo: {llm.name if hasattr(llm, 'name') else 'LLM'}")
+
+    # 3. Cria o agente usando a função pré-construída do LangGraph
+    # create_react_agent já configura o grafo, o nó de ferramentas e o loop.
+    graph = create_react_agent(
+        model=llm,
+        tools=tools,
+        prompt=system_message
     )
 
-    print("Executor do agente SQL criado com sucesso.")
-    return agent_executor
+    print("Grafo do agente SQL criado com sucesso.")
+    return graph

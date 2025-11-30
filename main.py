@@ -13,7 +13,7 @@ from app.core.config import OPENAI_API_KEY
 from app.tools.supabase_tools import get_database_connection
 
 # Importa os construtores de agentes e do grafo
-from app.agents.sql_agent import create_sql_agent_executor
+from app.agents.sql_agent import create_sql_agent_graph
 from app.agents.report_agent import create_report_chain
 from app.agents.orchestrator_agent import create_orchestrator_agent_runnable
 from app.graph.builder import create_graph_with_persistence
@@ -35,7 +35,7 @@ def main():
     # 2. Inicializa as ferramentas e sub-agentes
     try:
         db_connection = get_database_connection()
-        sql_agent = create_sql_agent_executor(llm=llm, db=db_connection)
+        sql_agent = create_sql_agent_graph(llm=llm, db=db_connection)
         report_chain = create_report_chain(llm=llm)
     except Exception as e:
         print(f"Erro durante a inicialização dos componentes: {e}")
@@ -44,7 +44,7 @@ def main():
     # 3. Cria o agente executável e as ferramentas
     agent_runnable, tools = create_orchestrator_agent_runnable(
         llm=llm,
-        sql_agent_executor=sql_agent,
+        sql_agent_graph=sql_agent,
         report_chain=report_chain,
     )
 

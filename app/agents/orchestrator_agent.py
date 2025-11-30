@@ -1,10 +1,11 @@
 # app/agents/orchestrator_agent.py
 from typing import List, Tuple
-from langchain.agents import AgentExecutor, Tool, create_openai_tools_agent
+from langchain.agents import Tool, create_openai_tools_agent
 from langchain.tools import StructuredTool
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.runnables import Runnable
-from pydantic.v1 import BaseModel, Field
+from langchain_core.messages import HumanMessage
+from pydantic import BaseModel, Field
 
 # Importa o prompt que define a lógica do orquestrador
 from app.prompts.orchestrator_prompts import OrchestratorPrompt
@@ -18,7 +19,7 @@ class ReportToolInput(BaseModel):
 
 def create_orchestrator_agent_runnable(
     llm: BaseLanguageModel,
-    sql_agent_executor: AgentExecutor,
+    sql_agent_graph: Runnable,
     report_chain: Runnable,
 ) -> Tuple[Runnable, List[Tool]]:
     """
@@ -33,10 +34,17 @@ def create_orchestrator_agent_runnable(
             "operation_result": operation_result
         })
 
+    # Função adaptadora para o agente SQL (LangGraph)
+    def sql_agent_wrapper(query: str):
+        # O grafo espera um estado com 'messages'
+        result = sql_agent_graph.invoke({"messages": [HumanMessage(content=query)]})
+        # O resultado é o estado final. A resposta do agente está na última mensagem.
+        return result["messages"][-1].content
+
     # 1. Cria as ferramentas para o Orquestrador.
     sql_tool = Tool(
         name="SQLQueryTool",
-        func=sql_agent_executor.invoke,
+        func=sql_agent_wrapper,
         description="Use for any questions about reading or querying data from the database. Input should be a user's natural language question."
     )
     
