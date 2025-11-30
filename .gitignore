@@ -3,3 +3,4 @@
 Arquitetura.txt
 __pycache__/
 *.pyc
+test_db_connection.py
