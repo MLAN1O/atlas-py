@@ -5,8 +5,8 @@ import datetime
 import uuid
 
 from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
-from langgraph.checkpoint.sqlite import SqliteSaver
+from langchain_openai import ChatOpenAI 
+from langgraph.checkpoint.sqlite import SqliteSaver # Para persistência do estado do grafo
 
 # Importa os componentes de configuração e ferramentas
 from app.core.config import OPENAI_API_KEY

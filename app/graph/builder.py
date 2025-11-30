@@ -1,6 +1,7 @@
 # app/graph/builder.py
 import operator
 from typing import Annotated, Sequence
+import json
 
 from langchain_core.agents import AgentFinish
 from langchain_core.messages import BaseMessage, AIMessage
@@ -29,14 +30,22 @@ def agent_node(state: GraphState, agent: Runnable, name: str):
         return {"messages": [AIMessage(content=content)]}
 
     actions = result if isinstance(result, list) else [result]
-    tool_calls = [
-        {
+    tool_calls = []
+    for action in actions:
+        args = action.tool_input
+        if isinstance(args, str):
+            try:
+                # Tenta fazer o parse como JSON
+                args = json.loads(args)
+            except json.JSONDecodeError:
+                # Se não for JSON, assume que é o valor para a chave 'question'
+                args = {"question": args}
+        
+        tool_calls.append({
             "name": action.tool,
-            "args": action.tool_input,
+            "args": args,
             "id": action.tool_call_id,
-        }
-        for action in actions
-    ]
+        })
     
     return {"messages": [AIMessage(content="", tool_calls=tool_calls)]}
 

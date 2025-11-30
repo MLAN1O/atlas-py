@@ -20,7 +20,6 @@ if not all(DATABASE_VARS):
 # URL do banco de dados para o LangChain SQL Agent (leitura)
 DATABASE_URL = f"postgresql+psycopg2://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
-
 # --- Configuração da API do Supabase (para escrita) ---
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
@@ -28,7 +27,6 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 # Validação para garantir que as variáveis da API do Supabase foram carregadas
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Erro: SUPABASE_URL ou SUPABASE_KEY não estão definidas no .env.")
-
 
 # --- Configuração das Chaves de API dos LLMs ---
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

@@ -17,31 +17,22 @@ except Exception as e:
 # --- Funções de Metadados ---
 
 def get_all_table_names() -> List[str]:
-    """
-    Busca e retorna uma lista com os nomes de todas as tabelas visíveis no schema 'public'.
-    """
+    """Busca e retorna os nomes das tabelas visíveis no schema 'public'."""
     try:
-        print("Buscando esquemas de tabelas...")
-        # O método rpc() chama uma função PostgreSQL. Neste caso, uma função customizada
-        # ou uma consulta que busca os nomes das tabelas do information_schema.
-        # Se você não tiver uma função `get_table_names`, pode usar uma consulta direta
-        # se o seu setup permitir, ou listar manualmente.
-        # Abordagem mais robusta é usar a API de metadados do próprio Supabase/PostgREST.
-        # Por simplicidade, vamos assumir que podemos fazer uma chamada para pegar as tabelas.
-        # Esta é uma forma de simular a busca de metadados:
+        logger.info("Buscando esquemas de tabelas via RPC...")
         response = supabase_client.rpc('get_table_names', {}).execute()
         if response.data:
             table_names = [item['table_name'] for item in response.data]
-            print(f"Tabelas encontradas: {table_names}")
+            logger.info(f"Tabelas encontradas: {table_names}")
             return table_names
         else:
-            # Fallback para uma lista manual se a função RPC não existir
-            print("Função RPC 'get_table_names' não encontrada ou sem retorno. Usando lista de fallback.")
-            return ["custos", "vendas","abates"]
+            logger.warning("RPC sem retorno. Usando lista de fallback.")
     except Exception as e:
-        print(f"Erro ao buscar nomes das tabelas via RPC: {e}. Usando lista de fallback.")
-        # Em caso de erro, retorna uma lista de tabelas conhecidas como fallback
-        return ["custos", "vendas", "abates"]
+        logger.error(f"Erro ao buscar nomes das tabelas: {e}")
+
+    # Fallback final
+    return ["custos", "vendas", "abates"]
+
 
 # --- Ferramenta de Leitura (para SQL Agent) ---
 
@@ -60,8 +51,6 @@ def get_database_connection():
         print(f"Erro fatal ao conectar via SQL: {e}")
         raise
 
-# app/tools/supabase_tools.py
-# app/tools/supabase_tools.py
 # app/tools/supabase_tools.py
 import psycopg2
 import logging

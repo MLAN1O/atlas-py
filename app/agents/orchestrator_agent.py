@@ -1,6 +1,6 @@
 # app/agents/orchestrator_agent.py
 from typing import List, Tuple
-from langchain.agents import AgentExecutor, Tool, create_openai_tools_agent, StructuredTool
+from langchain.agents import AgentExecutor, Tool, create_openai_tools_agent
 from langchain.tools import StructuredTool
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.runnables import Runnable
