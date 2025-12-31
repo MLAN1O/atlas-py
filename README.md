@@ -39,5 +39,3 @@ To make this tool truly useful for my routine, I integrated it with **WhatsApp**
 
 This setup has been a huge time-saver. It allows me to log production data directly from the field or check financial status while on the go, without ever needing to open a laptop. It effectively turned my chat app into a command line for my business.
 
----
-*Built to make business management less boring and more efficient.*
